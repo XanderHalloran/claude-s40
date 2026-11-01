@@ -10,3 +10,7 @@ secrets/
 .env
 CLAUDE.local.md
 .local/
+
+# build output
+server/dist/
+__pycache__/

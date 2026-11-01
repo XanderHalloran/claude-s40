@@ -1,0 +1,44 @@
+# Claude S40 server as a sandboxed systemd service (no Docker), e.g. on a
+# Raspberry Pi. Same file layout as deploy/push.sh, so deploy/admin.sh and
+# deploy/set-key.sh work unchanged with SSH_TARGET=root@<host>:
+#   /root/claude-s40-server/.env                      settings (no secrets)
+#   /root/claude-s40-server/certs/server-chain.pem    + server.key
+#   /root/claude-s40-server/secrets/admin_token       + anthropic_api_key (may be empty in mock mode)
+# The service never sees /root: systemd hands it copies of those files
+# (LoadCredential) and runs it as a throwaway user. After set-key.sh or an
+# .env change: systemctl restart claude-s40. Logs: journalctl -u claude-s40
+[Unit]
+Description=Claude S40 server (phone TLS + chat backend)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/claude-s40-server
+EnvironmentFile=/root/claude-s40-server/.env
+Environment=TLS_CERT=%d/cert TLS_KEY=%d/key ADMIN_TOKEN_FILE=%d/admin_token ANTHROPIC_API_KEY_FILE=%d/api_key DB_PATH=/var/lib/claude-s40/claude-s40.db
+LoadCredential=cert:/root/claude-s40-server/certs/server-chain.pem
+LoadCredential=key:/root/claude-s40-server/certs/server.key
+LoadCredential=admin_token:/root/claude-s40-server/secrets/admin_token
+LoadCredential=api_key:/root/claude-s40-server/secrets/anthropic_api_key
+StateDirectory=claude-s40
+Restart=on-failure
+RestartSec=5
+
+# sandbox (container-like: own user, read-only system, no home, no privileges)
+DynamicUser=yes
+ProtectHome=yes
+PrivateDevices=yes
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+MemoryMax=128M
+TasksMax=128
+
+[Install]
+WantedBy=multi-user.target

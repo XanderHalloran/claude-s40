@@ -15,6 +15,8 @@
 JAVA ?= java
 JAVAC ?= javac
 PYTHON ?= python3
+# Java classpath separator (';' on Windows)
+SEP := $(if $(filter Windows_NT,$(OS)),;,:)
 
 DEPS  ?= .deps/j2me
 ECJ   := $(DEPS)/ecj-3.33.0.jar
@@ -53,10 +55,10 @@ build: deps
 	mkdir -p $(BUILD)/classes $(BUILD)/preverified $(BUILD)/res $(STUBS)
 	$(PYTHON) tools/make_art.py icon $(BUILD)/res/icon.png
 	$(JAVA) -jar $(ECJ) -source $(SOURCE_LEVEL) -target $(TARGET_LEVEL) \
-		-bootclasspath $(CLDC):$(MIDP) -encoding UTF-8 -g:none \
+		-bootclasspath "$(CLDC)$(SEP)$(MIDP)" -encoding UTF-8 -g:none \
 		-failOnWarning -d $(STUBS) $(STUB_SRCS)
 	$(JAVA) -jar $(ECJ) -source $(SOURCE_LEVEL) -target $(TARGET_LEVEL) \
-		-bootclasspath $(CLDC):$(MIDP):$(JSR75):$(STUBS) -encoding UTF-8 -g:none \
+		-bootclasspath "$(CLDC)$(SEP)$(MIDP)$(SEP)$(JSR75)$(SEP)$(STUBS)" -encoding UTF-8 -g:none \
 		-failOnWarning -d $(BUILD)/classes $(SRCS)
 	$(JAVA) -jar $(PROGUARD) @claude-s40.pro \
 		-injars $(BUILD)/classes -outjars $(BUILD)/preverified \
